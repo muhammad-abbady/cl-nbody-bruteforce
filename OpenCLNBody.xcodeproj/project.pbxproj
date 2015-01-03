@@ -8,23 +8,32 @@
 
 /* Begin PBXBuildFile section */
 		525F4BE71A4FA2B70075F7F6 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 525F4BE61A4FA2B70075F7F6 /* main.cpp */; };
+		525F4BEE1A4FA2C60075F7F6 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525F4BED1A4FA2C60075F7F6 /* OpenCL.framework */; };
+		525F4BF01A4FA2CD0075F7F6 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525F4BEF1A4FA2CD0075F7F6 /* OpenGL.framework */; };
+		525F4BF21A4FA2EA0075F7F6 /* GLUT.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 525F4BF11A4FA2EA0075F7F6 /* GLUT.framework */; };
+		52F5A5691A576D7D007362AD /* kernels.cl in CopyFiles */ = {isa = PBXBuildFile; fileRef = 52F5A5671A576C2B007362AD /* kernels.cl */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		525F4BE11A4FA2B70075F7F6 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
+			buildActionMask = 12;
+			dstPath = "";
+			dstSubfolderSpec = 16;
 			files = (
+				52F5A5691A576D7D007362AD /* kernels.cl in CopyFiles */,
 			);
-			runOnlyForDeploymentPostprocessing = 1;
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		525F4BE31A4FA2B70075F7F6 /* OpenCLNBody */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = OpenCLNBody; sourceTree = BUILT_PRODUCTS_DIR; };
 		525F4BE61A4FA2B70075F7F6 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		525F4BED1A4FA2C60075F7F6 /* OpenCL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenCL.framework; path = System/Library/Frameworks/OpenCL.framework; sourceTree = SDKROOT; };
+		525F4BEF1A4FA2CD0075F7F6 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		525F4BF11A4FA2EA0075F7F6 /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = System/Library/Frameworks/GLUT.framework; sourceTree = SDKROOT; };
+		52F5A5671A576C2B007362AD /* kernels.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = kernels.cl; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -32,6 +41,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				525F4BF21A4FA2EA0075F7F6 /* GLUT.framework in Frameworks */,
+				525F4BF01A4FA2CD0075F7F6 /* OpenGL.framework in Frameworks */,
+				525F4BEE1A4FA2C60075F7F6 /* OpenCL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -41,6 +53,9 @@
 		525F4BDA1A4FA2B70075F7F6 = {
 			isa = PBXGroup;
 			children = (
+				525F4BF11A4FA2EA0075F7F6 /* GLUT.framework */,
+				525F4BEF1A4FA2CD0075F7F6 /* OpenGL.framework */,
+				525F4BED1A4FA2C60075F7F6 /* OpenCL.framework */,
 				525F4BE51A4FA2B70075F7F6 /* OpenCLNBody */,
 				525F4BE41A4FA2B70075F7F6 /* Products */,
 			);
@@ -58,6 +73,7 @@
 			isa = PBXGroup;
 			children = (
 				525F4BE61A4FA2B70075F7F6 /* main.cpp */,
+				52F5A5671A576C2B007362AD /* kernels.cl */,
 			);
 			path = OpenCLNBody;
 			sourceTree = "<group>";
@@ -232,6 +248,7 @@
 				525F4BEC1A4FA2B70075F7F6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
