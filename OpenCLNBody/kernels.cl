@@ -14,54 +14,79 @@ struct _body {
 };
 typedef struct _body body;
 
-//A kernel to calculate acceleration for the body
-__kernel void accelerate(
-//Bodies and their count
-__global body *bodies, const unsigned int count,
-//Constants
-float G, float e
-) {
-    //get the global run id
-    unsigned int i = get_global_id(0);
-    
-    //check if it's over the particles' count
-    if (i >= count) return;
-    
-    //calculate acceleration
-    bodies[i].ax = 0;
-    bodies[i].ay = 0;
-    unsigned int j = 0;
+void computeAcceleration(body* currentBody, float3 cachedBody, float G, float e) {
     float dx, dy, r, f;
-    for (; j < count; ++j) {
-        if (i == j) continue;
-        dx = bodies[i].x - bodies[j].x;
-        dy = bodies[i].y - bodies[j].y;
-        r = max(sqrt(dx*dx + dy*dy), e);
-        f = G * bodies[j].m / (r*r);
-        
-        bodies[i].ax -= f * (dx/r);
-        bodies[i].ay -= f * (dy/r);
-    }
+    dx = currentBody->x - cachedBody.x;
+    dy = currentBody->y - cachedBody.y;
+    r = max(sqrt(dx*dx + dy*dy), e);
+    f = G * cachedBody.z / (r*r);
+    
+    currentBody->ax -= f * (dx/r);
+    currentBody->ay -= f * (dy/r);
 }
 
-//A kernel to integrate acceleration and velocity
-__kernel void integrate(
-//Bodies and their count
-__global body *bodies, const unsigned int count,
-//Constants
-float dt, float decay
-) {
-    //get the global run id
-    int i = get_global_id(0);
+//A kernel to calculate acceleration for the body
+__kernel void accelerate(
+                         //Bodies and their count
+                         __global body *bodies, const unsigned int count, __local float3 *cache,
+                         //Constants
+                         float G, float e, float dt, float decay
+                         ) {
+    // get the global run id
+    unsigned int i = get_global_id(0);
+    unsigned int group_count = get_num_groups(0);
+    unsigned int group_size = get_local_size(0);
+    unsigned int local_id = get_local_id(0);
     
-    //check if it's over the particles' count
+    // check if it's over the particles' count
     if (i >= count) return;
     
-    //integrate
-    bodies[i].vx += bodies[i].ax * dt;
-    bodies[i].vy += bodies[i].ay * dt;
-    bodies[i].vx *= decay;
-    bodies[i].vy *= decay;
-    bodies[i].x  += bodies[i].vx * dt;
-    bodies[i].y  += bodies[i].vy * dt;
+    // body cache
+    body currentBody;
+    currentBody.x = bodies[i].x;
+    currentBody.y = bodies[i].y;
+    currentBody.vx = bodies[i].vx;
+    currentBody.vy = bodies[i].vy;
+    currentBody.ax = 0;
+    currentBody.ay = 0;
+    
+    // Loop on blocks
+    for(unsigned int g = 0; g < group_count; ++g) {
+        // cache a single body
+        unsigned idx = g * group_size + local_id;
+        cache[local_id].x = bodies[idx].x;
+        cache[local_id].y = bodies[idx].y;
+        cache[local_id].z = bodies[idx].m;
+        
+        // synchronize all work-items
+        barrier(CLK_LOCAL_MEM_FENCE);
+        
+        // calculate acceleration between the current body and the cache
+        for(unsigned int j = 0; j < group_size;) {
+            computeAcceleration(&currentBody, cache[j++], G, e);
+            computeAcceleration(&currentBody, cache[j++], G, e);
+            computeAcceleration(&currentBody, cache[j++], G, e);
+            computeAcceleration(&currentBody, cache[j++], G, e);
+            computeAcceleration(&currentBody, cache[j++], G, e);
+            computeAcceleration(&currentBody, cache[j++], G, e);
+            computeAcceleration(&currentBody, cache[j++], G, e);
+            computeAcceleration(&currentBody, cache[j++], G, e);
+        }
+        
+        // synchronize all work-items
+        barrier(CLK_LOCAL_MEM_FENCE);
+        
+    }
+    
+    currentBody.vx += currentBody.ax * dt;
+    currentBody.vy += currentBody.ay * dt;
+    currentBody.x += currentBody.vx * dt;
+    currentBody.y += currentBody.vy * dt;
+    currentBody.vx *= decay;
+    currentBody.vy *= decay;
+    
+    bodies[i].x = currentBody.x;
+    bodies[i].y = currentBody.y;
+    bodies[i].vx = currentBody.vx;
+    bodies[i].vy = currentBody.vy;
 }

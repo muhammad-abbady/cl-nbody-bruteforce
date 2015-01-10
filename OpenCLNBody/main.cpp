@@ -47,7 +47,6 @@ cl_context context;
 cl_command_queue queue;
 cl_program program;
 cl_kernel acceleration_kernel;
-cl_kernel integration_kernel;
 cl_mem bodies_cl_memory;
 
 // Window global variables
@@ -195,6 +194,14 @@ int main(int argc, char ** argv) {
         error("Error creating a program");
     }
     
+    size_t max_workgroup_size;
+    err = clGetDeviceInfo(device, CL_DEVICE_MAX_WORK_GROUP_SIZE,
+                          sizeof(max_workgroup_size), &max_workgroup_size, 0);
+    
+    if (err) {
+        error("Error getting device maximum workgroup size");
+    }
+    
     err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
     if (err) {
         size_t length;
@@ -208,11 +215,6 @@ int main(int argc, char ** argv) {
     acceleration_kernel = clCreateKernel(program, "accelerate", &err);
     if (err) {
         error("Error creating the acceleration kernel");
-    }
-    
-    integration_kernel = clCreateKernel(program, "integrate", &err);
-    if (err) {
-        error("Error creating the integration kernel");
     }
     
     bodies_cl_memory = clCreateBuffer(context, CL_MEM_READ_WRITE,
@@ -240,7 +242,6 @@ int main(int argc, char ** argv) {
     
     // release CL objects
     //--------------------------------------------------------------------------
-    clReleaseKernel(integration_kernel);
     clReleaseKernel(acceleration_kernel);
     clReleaseProgram(program);
     clReleaseCommandQueue(queue);
@@ -276,21 +277,6 @@ void runIteration(float dt) {
         error("Error setting the center particle position");
     }
     
-    
-    // Run the acceleration kernel
-    // Setting the kernel arguments
-    err |= clSetKernelArg(acceleration_kernel, 0,
-                          sizeof(cl_mem), &bodies_cl_memory);
-    err |= clSetKernelArg(acceleration_kernel, 1,
-                          sizeof(unsigned int), &number_of_particles);
-    err |= clSetKernelArg(acceleration_kernel, 2,
-                          sizeof(float), &G);
-    err |= clSetKernelArg(acceleration_kernel, 3,
-                          sizeof(float), &e);
-    if (err) {
-        error("Failed to set acceleration kernel arguments");
-    }
-    
     // Get the maximum work group size for the kernel
     err = clGetKernelWorkGroupInfo(acceleration_kernel, device,
                                    CL_KERNEL_WORK_GROUP_SIZE,
@@ -300,51 +286,39 @@ void runIteration(float dt) {
         error("Error getting acceleration kernel work group size");
     }
     
+    
+    // Run the acceleration kernel
+    // Calculate local memory needed for cache
+    size_t local_memory_size = workgroup_size * 3 * sizeof(float);
+    
+    // Setting the kernel arguments
+    err |= clSetKernelArg(acceleration_kernel, 0,
+                          sizeof(cl_mem), &bodies_cl_memory);
+    err |= clSetKernelArg(acceleration_kernel, 1,
+                          sizeof(number_of_particles), &number_of_particles);
+    err |= clSetKernelArg(acceleration_kernel, 2,
+                          local_memory_size, NULL);
+    err |= clSetKernelArg(acceleration_kernel, 3,
+                          sizeof(G), &G);
+    err |= clSetKernelArg(acceleration_kernel, 4,
+                          sizeof(e), &e);
+    err |= clSetKernelArg(acceleration_kernel, 5,
+                          sizeof(dt), &dt);
+    err |= clSetKernelArg(acceleration_kernel, 6,
+                          sizeof(decay), &decay);
+    if (err) {
+        error("Failed to set acceleration kernel arguments");
+    }
+    
     // Execute the kernel
     err = 0;
-    global_size = workgroup_size * (number_of_particles / workgroup_size + 1);
-        err |= clEnqueueNDRangeKernel(queue, acceleration_kernel, 1,
-                                      NULL, &global_size,
-                                      &workgroup_size, 0, NULL, NULL);
+    global_size = workgroup_size * (number_of_particles / workgroup_size);
+    err |= clEnqueueNDRangeKernel(queue, acceleration_kernel, 1,
+                                  NULL, &global_size,
+                                  &workgroup_size, 0, NULL, NULL);
     
     if (err) {
         error("Error executing acceleration kernel");
-    }
-    
-    // Wait for the kernel to finish
-    clFinish(queue);
-    
-    // Run the integration kernel
-    // Set the kernel arguments
-    err = clSetKernelArg(integration_kernel, 0,
-                         sizeof(cl_mem), &bodies_cl_memory);
-    err |= clSetKernelArg(integration_kernel, 1,
-                         sizeof(unsigned int), &number_of_particles);
-    err |= clSetKernelArg(integration_kernel, 2,
-                         sizeof(float), &dt);
-    err |= clSetKernelArg(integration_kernel, 3,
-                         sizeof(float), &decay);
-    
-    if (err) {
-        error("Failed to set integration kernel arguments");
-    }
-    
-    // Get the maximum work group size for the kernel
-    err = clGetKernelWorkGroupInfo(integration_kernel, device,
-                                   CL_KERNEL_WORK_GROUP_SIZE,
-                                   sizeof(workgroup_size),
-                                   &workgroup_size, NULL);
-    if (err) {
-        error("Error getting integration kernel work group size");
-    }
-    
-    // Execute the integration kernel.
-    global_size = workgroup_size * (number_of_particles / workgroup_size + 1);
-    err = clEnqueueNDRangeKernel(queue, integration_kernel, 1,
-                                 NULL, &global_size, &workgroup_size,
-                                 0, NULL, NULL);
-    if (err) {
-        error("Error executing integration kernel");
     }
     
     // Wait for the kernel to finish
